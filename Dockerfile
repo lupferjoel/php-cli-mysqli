@@ -8,6 +8,8 @@ RUN apt-get update && \
     libwebp-dev \
     libmagickwand-dev --no-install-recommends
 
+RUN rm /etc/ImageMagick-6/policy.xml
+
 RUN pecl install imagick
 
 RUN docker-php-ext-configure gd --enable-gd --with-jpeg --with-webp
