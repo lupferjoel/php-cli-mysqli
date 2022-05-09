@@ -2,10 +2,6 @@ FROM php:8.0-cli
 
 RUN apt-get update && \
     apt-get install -y \
-    libzip-dev \
-    libjpeg-dev \
-    libpng-dev \
-    libwebp-dev \
     libmagickwand-dev --no-install-recommends
 
 RUN rm /etc/ImageMagick-6/policy.xml
