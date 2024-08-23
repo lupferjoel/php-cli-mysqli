@@ -54,7 +54,7 @@ version: '2'
 
 services:
   php:
-    image: your-dockerhub-account/php-teamcity-tester:latest
+    image: joelgg/php-cli-mysqli:latest
     volumes:
       - .:/app
     working_dir: /app
@@ -66,8 +66,8 @@ services:
 To rebuild or customize the image, you can clone the repository and use the following commands:
 
 ```sh
-docker build -t your-dockerhub-account/php-teamcity-tester .
-docker push your-dockerhub-account/php-teamcity-tester
+docker build -t joelgg/php-cli-mysqli .
+docker push joelgg/php-cli-mysqli
 ```
 
 ## Contribution
@@ -79,6 +79,6 @@ If you'd like to contribute to improving or extending this image, feel free to o
 # at the moment of upgrading to php 8.3 the imagick pecl install is broken.
 # So I used the wordpress method [github link](https://github.com/docker-library/wordpress/blob/c37f27433bb26ea3ec3154fcb1f546d855afcff6/latest/php8.3/apache/Dockerfile)
 # Don't forget the set the correct platform because by default is arm not amd
-docker build -t joelgg/php-cli-mysqli:php8.3-amd64 . --platform linux/amd64
+docker build -t joelgg/php-cli-mysqli:php8.3 . --platform linux/amd64
 # than push the build
-docker push joelgg/php-cli-mysqli:php8.3-amd64
+docker push joelgg/php-cli-mysqli:php8.3
