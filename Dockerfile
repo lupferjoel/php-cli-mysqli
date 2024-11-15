@@ -26,3 +26,6 @@ RUN curl -fL -o imagick.tgz 'https://pecl.php.net/get/imagick-3.7.0.tgz'; \
     grep '^//#endif$' /tmp/imagick-3.7.0/Imagick.stub.php && exit 1 || :; \
     docker-php-ext-install /tmp/imagick-3.7.0; \
     rm -rf imagick.tgz /tmp/imagick-3.7.0;
+
+# Create user and group jenkins with UID 1000
+RUN groupadd -g 1000 jenkins && useradd -u 1000 -g jenkins -m jenkins
