@@ -10,6 +10,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libwebp-dev \
     default-mysql-client
 
+RUN pecl install pcov && docker-php-ext-enable pcov
+
 # Clean up after installation
 RUN rm /etc/ImageMagick-6/policy.xml
 
