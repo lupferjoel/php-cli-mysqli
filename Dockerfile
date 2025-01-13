@@ -10,6 +10,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libwebp-dev \
     default-mysql-client
 
+# Configure and install PHP extensions
+RUN docker-php-ext-configure gd \
+--with-jpeg \
+&& docker-php-ext-install gd
+
 RUN pecl install pcov && docker-php-ext-enable pcov
 
 # Clean up after installation
@@ -18,7 +23,7 @@ RUN rm /etc/ImageMagick-6/policy.xml
 # Configure PHP extensions
 RUN docker-php-ext-configure pdo_mysql --with-pdo-mysql=mysqlnd
 RUN docker-php-ext-configure mysqli --with-mysqli=mysqlnd
-RUN docker-php-ext-install mysqli pdo pdo_mysql exif gd
+RUN docker-php-ext-install mysqli pdo pdo_mysql exif
 
 # Install Imagick extension
 RUN curl -fL -o imagick.tgz 'https://pecl.php.net/get/imagick-3.7.0.tgz'; \
