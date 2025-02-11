@@ -1,5 +1,8 @@
 FROM php:8.3-cli
 
+# Set memory limit to 2G
+RUN echo "memory_limit = 2G" >> /usr/local/etc/php/conf.d/memory.ini
+
 # Install required packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
@@ -14,12 +17,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Configure and install PHP extensions
 RUN docker-php-ext-configure gd \
 --with-jpeg \
+--with-webp \
 && docker-php-ext-install gd
 
-RUN pecl install pcov && docker-php-ext-enable pcov
-
-# Clean up after installation
-RUN rm /etc/ImageMagick-6/policy.xml
+# RUN pecl install pcov && docker-php-ext-enable pcov
 
 # Configure PHP extensions
 RUN docker-php-ext-configure pdo_mysql --with-pdo-mysql=mysqlnd
@@ -36,6 +37,9 @@ RUN curl -fL -o imagick.tgz 'https://pecl.php.net/get/imagick-3.7.0.tgz'; \
     grep '^//#endif$' /tmp/imagick-3.7.0/Imagick.stub.php && exit 1 || :; \
     docker-php-ext-install /tmp/imagick-3.7.0; \
     rm -rf imagick.tgz /tmp/imagick-3.7.0;
+
+# Clean up policy after installation
+RUN rm /etc/ImageMagick-6/policy.xml
 
 # Create user and group jenkins with UID 1000
 RUN groupadd -g 1000 jenkins && useradd -u 1000 -g jenkins -m jenkins
