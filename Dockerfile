@@ -58,7 +58,9 @@ RUN docker-php-ext-configure gd --with-jpeg --with-webp \
         mysqli \
         pdo \
         pdo_mysql \
-        exif
+        exif \
+    && pecl install pcov \
+    && docker-php-ext-enable pcov
 
 # Create user and group jenkins with UID 1000
 RUN groupadd -g 1000 jenkins && \
