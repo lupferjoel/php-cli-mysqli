@@ -73,4 +73,4 @@ RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local
 USER jenkins
 
 # Set working directory
-WORKDIR /home/jenkins
+WORKDIR /var/www/html
