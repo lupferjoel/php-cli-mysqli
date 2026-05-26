@@ -1,84 +1,93 @@
-# PHP 8.3 CLI with Imagick for TeamCity Testing
+# PHP 8.5 CLI with Imagick for TeamCity Testing
 
-This Docker image is designed to facilitate testing PHP applications using TeamCity. It includes the required libraries and extensions, such as `libmagickwand-dev`, `libpng-dev`, `libjpeg-dev`, and `libwebp-dev`. Additionally, it installs and configures `pdo_mysql`, `mysqli`, and the Imagick extension.
+This Docker image is designed to facilitate testing PHP applications using TeamCity. It includes the required libraries and extensions, such as `libmagickwand-dev`, `libpng-dev`, `libjpeg-dev`, and `libwebp-dev`. Additionally, it installs and configures `pdo_mysql`, `mysqli`, `imagick`, and `pcov`.
 
 ## Dockerfile Summary
 
 ```Dockerfile
-FROM php:8.3-cli
+FROM php:8.5-cli
 
-RUN apt-get update; \
-    apt-get install -y --no-install-recommends \
-    libmagickwand-dev libpng-dev libjpeg-dev libwebp-dev
-
-RUN rm /etc/ImageMagick-6/policy.xml
-
-RUN docker-php-ext-configure pdo_mysql --with-pdo-mysql=mysqlnd
-
-RUN docker-php-ext-configure mysqli --with-mysqli=mysqlnd
-
-RUN docker-php-ext-install mysqli pdo pdo_mysql exif gd
-
-RUN curl -fL -o imagick.tgz 'https://pecl.php.net/get/imagick-3.7.0.tgz'; \
-echo '5a364354109029d224bcbb2e82e15b248be9b641227f45e63425c06531792d3e *imagick.tgz' | sha256sum -c -; \
-tar --extract --directory /tmp --file imagick.tgz imagick-3.7.0; \
-grep '^//#endif$' /tmp/imagick-3.7.0/Imagick.stub.php; \
-test "$(grep -c '^//#endif$' /tmp/imagick-3.7.0/Imagick.stub.php)" = '1'; \
-sed -i -e 's!^//#endif$!#endif!' /tmp/imagick-3.7.0/Imagick.stub.php; \
-grep '^//#endif$' /tmp/imagick-3.7.0/Imagick.stub.php && exit 1 || :; \
-docker-php-ext-install /tmp/imagick-3.7.0; \
-rm -rf imagick.tgz /tmp/imagick-3.7.0;
+# PHP config: verbose errors, 2G memory limit
+# Packages: git, unzip, ImageMagick/GD deps, mysql client, ghostscript
+# imagick 3.8.1 via pecl (3.7.x fails on PHP 8.5)
+# Extensions: gd, mysqli, pdo, pdo_mysql, exif, pcov
+# Non-root jenkins user (UID 1000), Composer installed
 ```
 
 ## Features
 
-- **PHP Version**: 8.3 CLI
+- **PHP Version**: 8.5 CLI
 - **Installed Libraries**:
   - `libmagickwand-dev`
   - `libpng-dev`
   - `libjpeg-dev`
   - `libwebp-dev`
+  - `librsvg2-dev`
+  - `libheif-dev`
 - **PHP Extensions**:
   - `pdo_mysql` (configured with `mysqlnd`)
   - `mysqli` (configured with `mysqlnd`)
   - `exif`
-  - `gd`
-  - `imagick` (version 3.7.0)
+  - `gd` (with JPEG and WebP support)
+  - `imagick` (version 3.8.1)
+  - `pcov`
+- **Other**:
+  - Composer
+  - Non-root `jenkins` user (UID 1000)
 
 ## Usage
 
-This image can be used in your TeamCity build configurations to test PHP applications that require the above-mentioned libraries and extensions. Simply use this image in your build steps where PHP execution is needed.
+This image can be used in your TeamCity build configurations to test PHP applications that require the above-mentioned libraries and extensions. Use a version tag rather than `latest`.
 
 ```yaml
 version: '2'
 
 services:
   php:
-    image: joelgg/php-cli-mysqli:latest
+    image: joelgg/php-cli-mysqli:php8.5
     volumes:
       - .:/app
     working_dir: /app
     command: ["php", "your-script.php"]
 ```
 
+For arm64 hosts, use the `-arm64` suffix (e.g. `joelgg/php-cli-mysqli:php8.5-arm64`).
+
 ## Building the Image
 
-To rebuild or customize the image, you can clone the repository and use the following commands:
+Use `build.sh` with a required tag. By default it builds both `linux/amd64` and `linux/arm64`.
 
 ```sh
-docker build -t joelgg/php-cli-mysqli .
-docker push joelgg/php-cli-mysqli
+# Build both platforms
+./build.sh --tag php8.5
+
+# Build and push
+./build.sh --tag php8.5 --push
+
+# amd64 only
+./build.sh --tag php8.5 --platform amd64 -p
 ```
+
+This produces:
+
+- `joelgg/php-cli-mysqli:<tag>` for amd64
+- `joelgg/php-cli-mysqli:<tag>-arm64` for arm64
+
+Run `./build.sh --help` for all options.
 
 ## Contribution
 
 If you'd like to contribute to improving or extending this image, feel free to open a pull request or issue on the GitHub repository. Contributions are always welcome.
 
+## Upgrade notes
 
-# This is just the note for the future if I need to update this
-# at the moment of upgrading to php 8.3 the imagick pecl install is broken.
-# So I used the wordpress method [github link](https://github.com/docker-library/wordpress/blob/c37f27433bb26ea3ec3154fcb1f546d855afcff6/latest/php8.3/apache/Dockerfile)
-# Don't forget the set the correct platform because by default is arm not amd
-docker build -t joelgg/php-cli-mysqli:php8.3 . --platform linux/amd64
-# than push the build
-docker push joelgg/php-cli-mysqli:php8.3
+When upgrading PHP versions, imagick often needs a newer PECL release. On PHP 8.5, imagick 3.7.x fails because `php_smart_string.h` was removed — use 3.8.1 or later.
+
+Always set the target platform explicitly when building by hand; Docker defaults to the host architecture (often arm64 on Apple Silicon):
+
+```sh
+docker build -t joelgg/php-cli-mysqli:php8.5 . --platform linux/amd64
+docker push joelgg/php-cli-mysqli:php8.5
+```
+
+Prefer `./build.sh --tag php8.5` for multi-platform builds.
