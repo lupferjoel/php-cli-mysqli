@@ -10,6 +10,13 @@ RUN { \
     echo 'memory_limit = 2G'; \
 } > /usr/local/etc/php/conf.d/docker-php-config.ini
 
+# Disable TLS for the mysql CLI client (PHP 8.4+ mysqlnd now negotiates TLS by
+# default; the PHP side is handled via PDO_MYSQL_DISABLE_TLS + auto_prepend).
+RUN mkdir -p /etc/mysql/conf.d && { \
+    echo '[client]'; \
+    echo 'skip-ssl'; \
+} > /etc/mysql/conf.d/disable-ssl.cnf
+
 # Install required packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
@@ -49,6 +56,9 @@ RUN groupadd -g 1000 jenkins && \
 
 # Install Composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+# Skip PDO MySQL TLS unless the application opts in (PDO_MYSQL_DISABLE_TLS=0)
+ENV PDO_MYSQL_DISABLE_TLS=1
 
 # Switch to non-root user
 USER jenkins
