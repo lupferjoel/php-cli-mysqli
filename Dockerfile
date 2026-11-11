@@ -1,4 +1,7 @@
-FROM php:8.5-cli
+# PHP version: the single source of truth for the image tag (build.sh reads it).
+# Bump it here for a new PHP release; every version gets its own tag (php<version>).
+ARG PHP_VERSION=8.5.12
+FROM php:${PHP_VERSION}-cli
 
 # Add PHP configurations
 RUN { \
