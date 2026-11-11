@@ -16,7 +16,7 @@ FROM php:8.5-cli
 
 ## Features
 
-- **PHP Version**: 8.5 CLI
+- **PHP Version**: 8.5 CLI (exact version in `ARG PHP_VERSION` in the `Dockerfile`)
 - **Installed Libraries**:
   - `libmagickwand-dev`
   - `libpng-dev`
@@ -37,72 +37,52 @@ FROM php:8.5-cli
 
 ## Usage
 
-This image can be used in your TeamCity build configurations to test PHP applications that require the above-mentioned libraries and extensions. Use a version tag rather than `latest`.
+This image can be used in your TeamCity build configurations to test PHP applications that require the above-mentioned libraries and extensions. Use a full version tag (e.g. `php8.5.12`) rather than `latest` or `php8.5`.
 
 ```yaml
 version: '2'
 
 services:
   php:
-    image: joelgg/php-cli-mysqli:php8.5
+    image: joelgg/php-cli-mysqli:php8.5.12
     volumes:
       - .:/app
     working_dir: /app
     command: ["php", "your-script.php"]
 ```
 
-For arm64 hosts, use the `-arm64` suffix (e.g. `joelgg/php-cli-mysqli:php8.5-arm64`).
+For arm64 hosts, use the `-arm64` suffix (e.g. `joelgg/php-cli-mysqli:php8.5.12-arm64`).
 
-## Building the Image
+## Tags
 
-Use `build.sh` with a required tag. By default it builds both `linux/amd64` and `linux/arm64`.
+Every PHP release gets its own immutable tag, derived from `ARG PHP_VERSION` in the `Dockerfile`:
 
-```sh
-# Build both platforms
-./build.sh --tag php8.5
+| Tag | Arch | Use |
+|---|---|---|
+| `php8.5.12` | amd64 | CI (pinned in `laravel-api/Jenkinsfile`) |
+| `php8.5.12-arm64` | arm64 | CI on arm64 agents |
+| `php8.5` / `php8.5-arm64` | | moving alias to the newest 8.5 build, for local use only |
 
-# Build and push
-./build.sh --tag php8.5 --push
+CI pins the full version on purpose: a new image never changes CI by itself, every agent pulls the
+new tag on its first run (it is missing locally), and the PHP version CI uses is visible in the
+Jenkinsfile history. The `laravel-api` Jenkinsfile therefore does not use `alwaysPull`.
 
-# amd64 only
-./build.sh --tag php8.5 --platform amd64 -p
-```
+## Releasing a new PHP version
 
-This produces:
+1. Bump `ARG PHP_VERSION` in the `Dockerfile` (e.g. `8.5.12` → `8.5.13`; `php:<version>-cli` must
+   exist on Docker Hub).
+2. Build and push both platforms:
 
-- `joelgg/php-cli-mysqli:<tag>` for amd64
-- `joelgg/php-cli-mysqli:<tag>-arm64` for arm64
+   ```sh
+   ./build.sh --push
+   ```
 
-Run `./build.sh --help` for all options.
-
-## After every push: pull on the CI agents
-
-The CI agents do **not** pick up a pushed image by themselves. The `laravel-api` Jenkinsfile uses
-`agent { docker { image ... } }` without `alwaysPull` (deliberately: a push should not change CI
-halfway through a PR, and builds must not depend on the registry being reachable), so Docker only
-pulls when the image is missing on the node. Every push therefore needs a manual pull on every agent,
-otherwise CI keeps running the old image.
-
-Agents that run this image:
-
-- Jenkins: `deb-jenkins-node-1` … `deb-jenkins-node-6`
-- TeamCity: `ap-tc-be-agent-1` … `ap-tc-be-agent-3`
-
-They pull through `docker-cache.gutsgusto.dev`. The loop below re-pulls every `php-cli-mysqli`
-reference each agent already has (cached or direct), so it covers whichever name a pipeline uses:
-
-```sh
-for h in deb-jenkins-node-{1..6} ap-tc-be-agent-{1..3}; do
-  echo "== $h"
-  ssh "$h" 'docker images --format "{{.Repository}}:{{.Tag}}" \
-    | grep "joelgg/php-cli-mysqli:php8.5" \
-    | xargs -r -n1 docker pull -q \
-    && docker run --rm docker-cache.gutsgusto.dev/joelgg/php-cli-mysqli:php8.5 php -r "echo PHP_VERSION, PHP_EOL;"'
-done
-```
-
-Every host should print the new digest and PHP version. If a host prints nothing for the pull, it
-does not have the image yet and will pull it on its first build.
+   `build.sh` derives the tag from the Dockerfile, checks that `php -v` inside the image reports that
+   version, refuses to overwrite a tag that already exists on Docker Hub, and also moves the `php8.5`
+   alias. Options: `--platform amd64|arm64|both`, `--no-cache`, `--no-alias`, `--help`.
+3. In `laravel-api`, set `PHP_DOCKER_IMAGE` in the `Jenkinsfile` to the new tag
+   (`docker-cache.gutsgusto.dev/joelgg/php-cli-mysqli:php8.5.13`) and open a PR. That PR's own build
+   is the test of the new image.
 
 ## Contribution
 
@@ -112,11 +92,5 @@ If you'd like to contribute to improving or extending this image, feel free to o
 
 When upgrading PHP versions, imagick often needs a newer PECL release. On PHP 8.5, imagick 3.7.x fails because `php_smart_string.h` was removed — use 3.8.1 or later.
 
-Always set the target platform explicitly when building by hand; Docker defaults to the host architecture (often arm64 on Apple Silicon):
-
-```sh
-docker build -t joelgg/php-cli-mysqli:php8.5 . --platform linux/amd64
-docker push joelgg/php-cli-mysqli:php8.5
-```
-
-Prefer `./build.sh --tag php8.5` for multi-platform builds.
+Build with `./build.sh`, not with a bare `docker build`: Docker defaults to the host architecture
+(arm64 on Apple Silicon), and `build.sh` sets the platform and tag for you.
