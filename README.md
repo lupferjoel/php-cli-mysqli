@@ -5,7 +5,8 @@ This Docker image is designed to facilitate testing PHP applications using TeamC
 ## Dockerfile Summary
 
 ```Dockerfile
-FROM php:8.5-cli
+ARG PHP_VERSION=8.5.12
+FROM php:${PHP_VERSION}-cli
 
 # PHP config: verbose errors, 2G memory limit
 # Packages: git, unzip, ImageMagick/GD deps, mysql client, ghostscript

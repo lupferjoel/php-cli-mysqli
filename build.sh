@@ -43,7 +43,7 @@ build() {  # build <platform> <suffix>
     local platform=$1 suffix=$2
     local image="${REPO}:${TAG}${suffix}"
 
-    docker build --platform "linux/${platform}" $NO_CACHE -t "$image" .
+    docker build --platform "linux/${platform}" --pull $NO_CACHE -t "$image" .
 
     # Refuse to tag/push if the image does not run the PHP version its tag claims.
     local actual
