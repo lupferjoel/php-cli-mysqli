@@ -75,6 +75,35 @@ This produces:
 
 Run `./build.sh --help` for all options.
 
+## After every push: pull on the CI agents
+
+The CI agents do **not** pick up a pushed image by themselves. The `laravel-api` Jenkinsfile uses
+`agent { docker { image ... } }` without `alwaysPull` (deliberately: a push should not change CI
+halfway through a PR, and builds must not depend on the registry being reachable), so Docker only
+pulls when the image is missing on the node. Every push therefore needs a manual pull on every agent,
+otherwise CI keeps running the old image.
+
+Agents that run this image:
+
+- Jenkins: `deb-jenkins-node-1` … `deb-jenkins-node-6`
+- TeamCity: `ap-tc-be-agent-1` … `ap-tc-be-agent-3`
+
+They pull through `docker-cache.gutsgusto.dev`. The loop below re-pulls every `php-cli-mysqli`
+reference each agent already has (cached or direct), so it covers whichever name a pipeline uses:
+
+```sh
+for h in deb-jenkins-node-{1..6} ap-tc-be-agent-{1..3}; do
+  echo "== $h"
+  ssh "$h" 'docker images --format "{{.Repository}}:{{.Tag}}" \
+    | grep "joelgg/php-cli-mysqli:php8.5" \
+    | xargs -r -n1 docker pull -q \
+    && docker run --rm docker-cache.gutsgusto.dev/joelgg/php-cli-mysqli:php8.5 php -r "echo PHP_VERSION, PHP_EOL;"'
+done
+```
+
+Every host should print the new digest and PHP version. If a host prints nothing for the pull, it
+does not have the image yet and will pull it on its first build.
+
 ## Contribution
 
 If you'd like to contribute to improving or extending this image, feel free to open a pull request or issue on the GitHub repository. Contributions are always welcome.
